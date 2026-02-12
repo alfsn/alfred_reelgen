@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "alfred-reelgen"
+version = "0.1.0"
+description = "Multi-agent automated content generation pipeline for financial reels"
+authors = ["Alfred <alfredo.sampron@hallway.com.ar>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+pydantic = "^2.12.5"
+langgraph = "^1.0.8"
+yfinance = "^1.1.0"
+tavily-python = "^0.7.21"
+requests = "^2.32.5"
+pyyaml = "^6.0.3"
+python-dotenv = "^1.2.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
