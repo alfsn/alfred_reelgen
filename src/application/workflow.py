@@ -1,24 +1,21 @@
 from langgraph.graph import StateGraph, END
 from src.application.state import AgentState
 from src.application.agents.research_agent import ResearchAgent
+from src.application.agents.marketing_agent import MarketingAgent
 from typing import Dict, Any
 
-def create_workflow(research_agent: ResearchAgent):
+def create_workflow(research_agent: ResearchAgent, marketing_agent: MarketingAgent):
     workflow = StateGraph(AgentState)
 
     # Add Nodes
     workflow.add_node("research", research_agent.execute)
+    workflow.add_node("marketing", marketing_agent.execute)
     
-    # Placeholder nodes for Phase 3 and 4
-    def marketing_placeholder(state: AgentState) -> AgentState:
-        print("--- MARKETING PLACEHOLDER ---")
-        return state
-
+    # Placeholder node for Phase 4
     def linguistics_placeholder(state: AgentState) -> AgentState:
         print("--- LINGUISTICS PLACEHOLDER ---")
         return state
 
-    workflow.add_node("marketing", marketing_placeholder)
     workflow.add_node("linguistics", linguistics_placeholder)
 
     # Set Entry Point
