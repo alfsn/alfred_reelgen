@@ -1,214 +1,169 @@
-Technical Design Document: ReelSmith v0
+Technical Design Document: ReelSmith v0.2
 
-Author: Principal Software Architect Date: October 26, 2023 Version: 0.1 (Draft) Status: Proposed
+Author: Principal Software Architect
+Date: February 12, 2026
+Version: 0.2 (Revised)
+Status: Approved for Implementation
 1. Executive Summary
 
-ReelSmith is a specialized, multi-agent automated content generation pipeline designed to produce high-quality, domain-specific short-form video scripts (Reels/TikTok) for the financial sector. The system leverages LangGraph for stateful orchestration, OpenRouter for model-agnostic LLM inference, and adheres to Clean Architecture principles to ensure maintainability and testability.
+ReelSmith is a specialized, multi-agent automated content generation pipeline designed to produce high-quality, domain-specific short-form video scripts (Reels/TikTok) for the financial sector ("Alfred Invierte"). The system leverages LangGraph for stateful orchestration and OpenRouter for model-agnostic LLM inference.
 
-The core value proposition is the decoupling of research, marketing structure, and linguistic refinement into distinct, specialized agents. This separation of concerns allows for rigorous fact-checking (via a self-correction loop), flexible marketing strategies (via the Strategy Pattern), and precise tonal control (via external configuration).
+The core architectural evolution in v0.2 is the strict application of the Strategy Pattern in the Marketing Layer. By decoupling the narrative structure (Hook vs. Story vs. Metaphor) from the agent execution logic, we ensure the system adheres to the Open/Closed Principle: new viral formats can be added as distinct classes without modifying existing agent code.
 2. System Architecture
 
-The system follows a Layered Architecture (Onion Architecture) to isolate the domain logic from external frameworks and tools.
+The system follows a Clean Architecture (Onion Architecture) to isolate domain logic from external frameworks.
 2.1 Architectural Layers
 
     Domain Layer (Core):
 
-        Contains enterprise business rules and entities (Script, Scene, ResearchData).
+        Entities: Script, Scene, NarrativeBeat, ResearchData.
 
-        Defines Interfaces (Ports) for external dependencies (e.g., DataSource, LLMProvider, ScriptStrategy).
+        Interfaces (Ports): IDataSource, ILLMProvider, IMarketingFramework.
 
-        Dependency Rule: This layer has zero external dependencies.
+        Constraint: Zero external dependencies.
 
     Application Layer (Use Cases):
 
-        Contains the application logic and orchestration.
+        Orchestration: LangGraph StateGraph defining the cyclic workflow.
 
-        LangGraph Orchestrator: Defines the workflow topology and state transitions.
+        Agents: ResearchAgent, MarketingAgent, LinguisticsAgent.
 
-        Agent Definitions: Concrete implementations of the workflow nodes (ResearchNode, MarketingNode, LinguisticsNode).
+        Factories: MarketingFrameworkFactory (Registry for strategies).
 
     Infrastructure Layer (Adapters):
 
-        Implementations of the domain interfaces.
+        Implementations: OpenRouterLLM, YFinanceAdapter, TavilyNewsAdapter.
 
-        Adapters: OpenRouterLLM, YFinanceAdapter, TavilyNewsAdapter.
+        Concrete Strategies: DirectResponseFramework, StorytellingFramework, MetaphorFramework.
 
-        Configuration: YAML parsers and Environment variable managers.
+        Config: YAML parsers and Pydantic settings.
 
 2.2 Class Diagram
 
-The following diagram illustrates the relationships between the Core Agents, the Strategy Pattern for marketing, and the Data Source abstractions.
+This diagram highlights the Dependency Inversion in the Marketing Agent.
 Code snippet
 
 classDiagram
     class AgentState {
         +str topic
+        +str framework_id
         +dict research_data
-        +float research_confidence
-        +int retry_count
-        +List~Scene~ script_draft
+        +List~NarrativeBeat~ script_draft
         +List~Scene~ final_script
     }
 
-    class ReelSmithGraph {
-        +StateGraph graph
-        +compile()
-        +run(input: dict)
+    %% Interfaces
+    class IMarketingFramework {
+        <<interface>>
+        +str framework_id
+        +str system_prompt_context
+        +structure_narrative(data, angle) List~NarrativeBeat~
     }
 
-    %% Abstract Base Classes
-    class IDataSource {
-        <<interface>>
-        +fetch_data(query: str) dict
-    }
     class ILLMProvider {
         <<interface>>
-        +generate(prompt: str, model: str) str
-    }
-    class IScriptStrategy {
-        <<interface>>
-        +apply_framework(data: dict) List~Scene~
+        +generate(prompt, model)
+        +generate_structured(prompt, model, schema)
     }
 
-    %% Implementations
-    class YFinanceSource {
-        +fetch_data(query: str)
+    %% Concrete Strategies (The "Open" part of OCP)
+    class DirectResponseFramework {
+        +framework_id = "direct_response"
+        +structure_narrative()
     }
-    class GeneralNewsSource {
-        +fetch_data(query: str)
+    class StorytellingFramework {
+        +framework_id = "storytelling"
+        +structure_narrative()
     }
-    class OpenRouterLLM {
-        +generate(prompt: str, model: str)
-    }
-    class HookProblemSolutionStrategy {
-        +apply_framework(data: dict)
-    }
-    class StorytellingStrategy {
-        +apply_framework(data: dict)
+    class MetaphorFramework {
+        +framework_id = "metaphor"
+        +structure_narrative()
     }
 
-    %% Nodes/Agents
-    class ResearchAgent {
-        -List~IDataSource~ sources
-        -ILLMProvider llm
-        +execute(state: AgentState) AgentState
-    }
+    %% The Context (The "Closed" part of OCP)
     class MarketingAgent {
-        -IScriptStrategy strategy
         -ILLMProvider llm
-        +execute(state: AgentState) AgentState
-    }
-    class LinguisticsAgent {
-        -dict style_config
-        -ILLMProvider llm
+        -Dict[str, IMarketingFramework] strategy_registry
         +execute(state: AgentState) AgentState
     }
 
     %% Relationships
-    ReelSmithGraph --> AgentState : manages
-    ReelSmithGraph --> ResearchAgent : calls
-    ReelSmithGraph --> MarketingAgent : calls
-    ReelSmithGraph --> LinguisticsAgent : calls
-
-    ResearchAgent --> IDataSource : injects
-    ResearchAgent --> ILLMProvider : injects
-    IDataSource <|-- YFinanceSource
-    IDataSource <|-- GeneralNewsSource
-
-    MarketingAgent --> IScriptStrategy : uses
-    IScriptStrategy <|-- HookProblemSolutionStrategy
-    IScriptStrategy <|-- StorytellingStrategy
-
-    LinguisticsAgent --> ILLMProvider : uses
+    MarketingAgent --> IMarketingFramework : depends on abstraction
+    MarketingAgent --> AgentState : modifies
+    
+    IMarketingFramework <|-- DirectResponseFramework
+    IMarketingFramework <|-- StorytellingFramework
+    IMarketingFramework <|-- MetaphorFramework
 
 3. Core Component Design
-
-The workflow is modeled as a cyclic graph.
 3.1 Agent Specifications
 A. Research Agent (Node)
 
-    Responsibility: Gather factual data and validate relevance/confidence.
-
-    Inputs: topic, angle.
+    Responsibility: Fact-finding and hallucinatory checks.
 
     Logic:
 
-        Decompose topic into queries.
+        Decompose topic into search queries.
 
-        Query IDataSource implementations.
+        Fetch data via IDataSource.
 
-        LLM evaluates data: Returns data_summary and confidence_score (0.0 - 1.0).
-
-        Self-Correction: If confidence_score < 0.7 AND retry_count == 0, modify the query and return State with incremented retry_count.
-
-    Failure State: If confidence_score < 0.7 AND retry_count >= 1, transition to EndNode with error.
+        Self-Correction Loop: If confidence_score < 0.7, rewrite queries and retry (max 2 retries).
 
 B. Marketing Agent (Node)
 
-    Responsibility: Structure the raw data into a compelling narrative.
+    Responsibility: Structuring raw data into a specific narrative arc.
 
-    Inputs: research_data, framework_id.
+    Key Design: Uses the Strategy Pattern.
 
     Logic:
 
-        Retrieve framework_id from config/input.
+        Read framework_id from state (e.g., "storytelling").
 
-        Instantiate the corresponding IScriptStrategy (e.g., ControversialTakeStrategy).
+        Retrieve the matching concrete class from MarketingFrameworkFactory.
 
-        Generate a list of raw scenes (Visuals + Narrative intent).
+        Call strategy.structure_narrative(research_data).
+
+        Output: A list of NarrativeBeat objects (intermediate representation).
 
 C. Linguistics Agent (Node)
 
-    Responsibility: Copywriting and Persona application.
-
-    Inputs: script_draft.
+    Responsibility: Tone application (Rioplatense/Voseo) and formatting.
 
     Logic:
 
-        Load style_guide.yaml (includes "Formal Rioplatense", "voseo", and negative constraints).
+        Load style_guide.yaml (Negative constraints: "No 'delve'", "No 'In conclusion'").
 
-        Rewrite spoken_text and text_on_screen.
+        Transform NarrativeBeats into final ScriptScenes.
 
-        Format output into strict JSON.
+        Apply "zinger" logic to every line.
 
-3.2 Execution Sequence Diagram
+3.2 Execution Sequence
 Code snippet
 
 sequenceDiagram
     participant User
-    participant Graph as LangGraph Orchestrator
-    participant Res as Research Agent
-    participant Mark as Marketing Agent
-    participant Ling as Linguistics Agent
+    participant Graph
+    participant Mark as MarketingAgent
+    participant Fac as FrameworkFactory
+    participant Strat as SpecificStrategy (e.g. Story)
 
-    User->>Graph: Invoke(topic="Inflation 2024")
-    Graph->>Res: Execute(State)
-    Res->>Res: Fetch Data & Eval Confidence
-
-    alt Confidence Low (First Attempt)
-        Res-->>Graph: Update State (retry_count=1)
-        Graph->>Res: Re-Execute (Retry)
-        Res->>Res: Refine Query & Fetch
-    end
-
-    alt Confidence Still Low
-        Res-->>Graph: Error State
-        Graph-->>User: Return "Insufficient Data"
-    else Confidence High
-        Res-->>Graph: State (research_data)
-        Graph->>Mark: Execute(State)
-        Mark->>Mark: Apply Strategy (e.g. Hook-Prob-Sol)
-        Mark-->>Graph: State (script_draft)
-        
-        Graph->>Ling: Execute(State)
-        Ling->>Ling: Apply Persona (Rioplatense) & Constraints
-        Ling-->>Graph: State (final_script)
-        Graph-->>User: Return Final JSON
-    end
+    User->>Graph: Invoke(topic="Inflation", framework="storytelling")
+    Graph->>Graph: Run Research Agent...
+    
+    Graph->>Mark: Execute(State)
+    Mark->>Fac: get_strategy("storytelling")
+    Fac-->>Mark: Returns StorytellingFramework Instance
+    
+    Mark->>Strat: structure_narrative(research_data)
+    Strat->>Strat: Internal LLM Call (Context: "Hero's Journey")
+    Strat-->>Mark: List[NarrativeBeat]
+    
+    Mark-->>Graph: Update State(script_draft)
+    Graph->>Graph: Run Linguistics Agent...
 
 4. Data Models
 
-We use Pydantic to enforce type safety across the system.
+We use Pydantic to enforce strict typing between layers.
 4.1 Input Model
 Python
 
@@ -218,179 +173,178 @@ from typing import Optional, Literal
 class ScriptRequest(BaseModel):
     topic: str = Field(..., description="The main subject of the video")
     angle: Optional[str] = Field(None, description="Specific angle, e.g., 'Impact on middle class'")
-    framework_id: Literal['hook_problem_solution', 'storytelling', 'educational'] = "hook_problem_solution"
+    # Maps directly to concrete strategy IDs
+    framework_id: Literal['direct_response', 'storytelling', 'metaphor'] = "direct_response"
 
-4.2 State Model (LangGraph)
+4.2 Intermediate Model (The Bridge)
+
+This model allows the Marketing Agent to pass intent to the Linguistics Agent without worrying about exact wording.
 Python
 
-from typing import TypedDict, List, Dict, Any, Optional
+class NarrativeBeat(BaseModel):
+    section_name: str  # e.g., "Climax", "The Turn"
+    narrative_intent: str # e.g., "Make the viewer feel the urgency of inflation"
+    content_focus: str # e.g., "Data point: 12% increase in CPI"
 
-class ScriptScene(TypedDict):
+4.3 Output Model
+Python
+
+class ScriptScene(BaseModel):
     scene_number: int
     visual_cue: str
     spoken_text: str
     text_on_screen: str
     estimated_duration: int
 
-class AgentState(TypedDict):
-    # Input
-    topic: str
-    angle: Optional[str]
-    framework_id: str
-    
-    # Research State
-    research_raw_data: str
-    research_confidence: float
-    retry_count: int
-    
-    # Intermediate Draft
-    script_draft: List[Dict[str, Any]]
-    
-    # Final Output
-    final_script: List[ScriptScene]
-    error_message: Optional[str]
-
-4.3 Output Model
-Python
-
-class ScriptOutput(BaseModel):
-    scenes: List[ScriptScene]
-    total_duration: int
-    metadata: Dict[str, Any]
-
 5. Interface Definitions
 
-These Abstract Base Classes (ABCs) enforce the Dependency Injection pattern.
-5.1 Data Source Interface
+This section defines the contracts that allow us to swap implementations.
+5.1 Marketing Framework Interface (SOLID)
+
+This is the core of the Open/Closed compliance.
 Python
 
 from abc import ABC, abstractmethod
-from typing import Dict, Any
+from typing import List
 
-class IDataSource(ABC):
+class IMarketingFramework(ABC):
+    """
+    Interface for structuring raw information into a specific video format.
+    """
+
+    @property
     @abstractmethod
-    def fetch(self, query: str) -> Dict[str, Any]:
-        """Fetches data relative to the query."""
+    def framework_id(self) -> str:
+        """Unique identifier (e.g., 'direct_response', 'storytelling')."""
         pass
 
-class YFinanceSource(IDataSource):
-    def fetch(self, query: str) -> Dict[str, Any]:
-        # Implementation wrapping yfinance library
+    @property
+    @abstractmethod
+    def system_prompt_context(self) -> str:
+        """
+        Instructions specific to this narrative structure.
+        E.g., 'You are a screenwriter using the Hero's Journey...'
+        """
         pass
 
-class GeneralNewsSource(IDataSource):
-    def fetch(self, query: str) -> Dict[str, Any]:
-        # Implementation wrapping Tavily/Serper API
+    @abstractmethod
+    def structure_narrative(self, research_data: str, angle: str) -> List[NarrativeBeat]:
+        """
+        Transforms unstructured research into a structured beat sheet.
+        """
         pass
 
-5.2 LLM Provider Interface
+5.2 Concrete Implementations (Examples)
+
+A. Direct Response (Standard /reel)
 Python
 
-class ILLMProvider(ABC):
-    @abstractmethod
-    def generate(self, prompt: str, model_id: str, temperature: float = 0.7) -> str:
-        """Generates text based on prompt and configuration."""
-        pass
+class DirectResponseFramework(IMarketingFramework):
+    framework_id = "direct_response"
     
-    @abstractmethod
-    def generate_structured(self, prompt: str, model_id: str, schema: Any) -> Any:
-        """Generates structured output (JSON) matching a Pydantic schema."""
+    @property
+    def system_prompt_context(self) -> str:
+        return "Structure: Hook -> Problem -> Agitation -> Solution (Alfred Invierte) -> CTA."
+
+    def structure_narrative(self, research_data: str, angle: str) -> List[NarrativeBeat]:
+        # Implementation wrapping LLM call
         pass
 
-5.3 Marketing Strategy Interface
+B. Storytelling (Narrative /reel-story)
 Python
 
-class IScriptStrategy(ABC):
-    @abstractmethod
-    def create_structure(self, research_data: str) -> List[Dict[str, str]]:
-        """Transforms research into a sequence of scene concepts."""
+class StorytellingFramework(IMarketingFramework):
+    framework_id = "storytelling"
+    
+    @property
+    def system_prompt_context(self) -> str:
+        return "Structure: 5 Scenes. Protagonist faces financial dilemma. High stakes. Resolution via Alfred."
+
+    def structure_narrative(self, research_data: str, angle: str) -> List[NarrativeBeat]:
+        # Implementation wrapping LLM call
+        pass
+
+C. Metaphor (Analogy /reel-metaphor)
+Python
+
+class MetaphorFramework(IMarketingFramework):
+    framework_id = "metaphor"
+    
+    @property
+    def system_prompt_context(self) -> str:
+        return "Structure: Explain the concept using ONE extended metaphor (e.g., gardening, cooking, mechanics)."
+
+    def structure_narrative(self, research_data: str, angle: str) -> List[NarrativeBeat]:
+        # Implementation wrapping LLM call
         pass
 
 6. Configuration Strategy
-
-Configuration is split into Infrastructure Config (Environment/Secrets) and Behavioral Config (YAML).
 6.1 agents_config.yaml
-
-Controls model selection and parameters per agent.
 YAML
 
 agents:
   research:
-    model_id: "anthropic/claude-3-5-sonnet" # High reasoning capability
+    model: "anthropic/claude-3-5-sonnet"
     temperature: 0.2
-    max_retries: 1
-    confidence_threshold: 0.7
-
+  
   marketing:
-    model_id: "openai/gpt-4o"
-    temperature: 0.7
-
+    model: "openai/gpt-4o"
+    temperature: 0.7 # Higher creativity for angles
+  
   linguistics:
-    model_id: "google/gemini-flash-1.5" # Fast, good for creative writing
-    temperature: 0.5
+    model: "google/gemini-1.5-flash" # Fast, high context window
+    temperature: 0.4
 
 6.2 style_guide.yaml
-
-Controls the persona and negative constraints.
 YAML
 
 persona:
   tone: "Formal Rioplatense Spanish"
-  dialect_features:
-    - "Use 'voseo' (vos tenés, vos podés)"
-    - "Avoid 'tú' completely"
-    - "Sound professional but punchy ('zingers')"
-
-formatting:
-  max_sentence_length: 20 words
+  features: ["voseo", "punchy sentences", "zingers"]
 
 negative_constraints:
-  - "Do not use 'In conclusion' or 'To summarize'"
-  - "Do not use 'Delve'"
-  - "Do not use emojis in the spoken text"
-  - "Do not start with 'Hello everyone'"
+  - "No 'In conclusion'"
+  - "No 'Hello everyone'"
+  - "No complex visual descriptions in spoken text"
 
 7. Implementation Plan
 
-This roadmap prioritizes the critical path: Research reliability -> Orchestration -> Output quality.
+Phase 1: Foundation (Days 1-2)
 
-    Phase 1: Foundation (Days 1-2)
+    Setup Poetry env.
 
-        Set up Python environment (Poetry/uv).
+    Implement IDataSource (YFinance, Tavily).
 
-        Implement OpenRouterLLM adapter.
+    Implement OpenRouterLLM adapter.
 
-        Implement YFinanceSource and mock GeneralNewsSource.
+Phase 2: The Core Graph (Days 3-4)
 
-        Create Pydantic models.
+    Implement LangGraph StateGraph.
 
-    Phase 2: The Graph Core (Days 3-4)
+    Build ResearchAgent with retry logic.
 
-        Initialize LangGraph StateGraph.
+Phase 3: Marketing Strategy Pattern (Day 5) [CRITICAL]
 
-        Implement ResearchNode with the "Retry Loop" logic.
+    Define IMarketingFramework ABC.
 
-        Unit test the retry mechanism (mocking low confidence responses).
+    Implement DirectResponseFramework (Hook/Problem/Solution).
 
-    Phase 3: Marketing & Logic (Day 5)
+    Implement StorytellingFramework (Hero's Journey).
 
-        Implement MarketingNode using the Strategy Pattern.
+    Implement MetaphorFramework (Extended Analogy).
 
-        Create HookProblemSolutionStrategy.
+    Build MarketingFrameworkFactory to register these classes.
 
-    Phase 4: Linguistics & Polish (Day 6)
+    Unit Test: Ensure switching framework_id drastically changes the script_draft output.
 
-        Implement LinguisticsNode.
+Phase 4: Linguistics & Polish (Day 6)
 
-        Integrate style_guide.yaml loading.
+    Implement LinguisticsAgent.
 
-        Refine prompts for Rioplatense Spanish.
+    Tune prompts for "Alfred Invierte" Rioplatense persona.
 
-    Phase 5: Integration & API (Day 7)
+Phase 5: Integration (Day 7)
 
-        Wrap the graph in a simple main.py entry point.
+    End-to-end testing with CLI entry point.
 
-        Run end-to-end tests with real topics (e.g., "Inflation in Argentina").
-
-
-        
+    Verify JSON output matches valid schema.
