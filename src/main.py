@@ -92,11 +92,14 @@ def main():
             print(f"- {err}")
 
     # Save to file
-    with open(args.output, "w", encoding="utf-8") as f:
+    output_dir = "reel_scripts"
+    os.makedirs(output_dir, exist_ok=True)
+    output_path = os.path.join(output_dir, args.output)
+    with open(output_path, "w", encoding="utf-8") as f:
         json_output = [scene.model_dump() for scene in final_state['final_script']]
         json.dump(json_output, f, indent=2, ensure_ascii=False)
     
-    print(f"Script saved to {args.output}")
+    print(f"Script saved to {output_path}")
 
 if __name__ == "__main__":
     main()
