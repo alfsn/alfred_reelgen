@@ -47,10 +47,7 @@ poetry run python src/main.py --topic "Bitcoin Halving 2024"
 ### Example: Storytelling Framework
 
 ```bash
-poetry run python src/main.py 
-  --topic "The Compound Interest Effect" 
-  --angle "Start investing at 20 vs 40" 
-  --framework storytelling
+poetry run python -m src.main --topic "The Compound Interest Effect" --angle "Start investing at 20 vs 40" --framework storytelling
 ```
 
 ## Generated Output
@@ -67,7 +64,7 @@ The script will be printed to your console and saved as a JSON file. Each scene 
 {
   "scene_number": 1,
   "visual_cue": "Alfred mirándote a cámara con un café en la mano.",
-  "spoken_text": "Che, ¿sabías que si arrancás hoy, tu futuro cambia por completo? No seas colgado.",
+  "spoken_text": "¿sabías que si arrancás hoy, tu futuro cambia por completo?.",
   "text_on_screen": "¡Arrancá HOY!",
   "estimated_duration": 5
 }
