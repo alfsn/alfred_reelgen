@@ -19,6 +19,15 @@ class ResearchData(BaseModel):
     sources: List[str]
     confidence_score: float
 
+class Persona(BaseModel):
+    name: str
+    tone: str
+    dialect_features: List[str]
+    description: str
+    philosophy: Optional[str] = None
+    structural_constraints: List[str] = Field(default_factory=list)
+    negative_constraints: List[str] = Field(default_factory=list)
+
 class Script(BaseModel):
     topic: str
     framework_id: str
