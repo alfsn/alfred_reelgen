@@ -6,6 +6,7 @@ from datetime import datetime
 from dotenv import load_dotenv
 
 from src.infrastructure.adapters import YFinanceAdapter, TavilyAdapter, OpenRouterLLMAdapter
+from src.infrastructure.persona_providers import ConfigPersonaProvider
 from src.application.agents.research_agent import ResearchAgent
 from src.application.agents.marketing_agent import MarketingAgent
 from src.application.agents.linguistics_agent import LinguisticsAgent
@@ -55,10 +56,12 @@ def main():
     # Initialize Agents
     research_agent = ResearchAgent(data_source, llm)
     
-    marketing_factory = MarketingFrameworkFactory(llm)
-    marketing_agent = MarketingAgent(marketing_factory)
+    persona_provider = ConfigPersonaProvider()
     
-    linguistics_agent = LinguisticsAgent(llm)
+    marketing_factory = MarketingFrameworkFactory(llm)
+    marketing_agent = MarketingAgent(marketing_factory, persona_provider)
+    
+    linguistics_agent = LinguisticsAgent(llm, persona_provider)
 
     # Create Workflow
     app = create_workflow(research_agent, marketing_agent, linguistics_agent)

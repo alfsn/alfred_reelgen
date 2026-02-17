@@ -1,20 +1,13 @@
 from typing import List, Dict, Any
-import yaml
 import os
 from src.application.state import AgentState
-from src.domain.interfaces import ILLMProvider
+from src.domain.interfaces import ILLMProvider, IPersonaProvider
 from src.domain.entities import ScriptScene, NarrativeBeat
 
 class LinguisticsAgent:
-    def __init__(self, llm: ILLMProvider, style_guide_path: str = "config/style_guide.yaml"):
+    def __init__(self, llm: ILLMProvider, persona_provider: IPersonaProvider):
         self.llm = llm
-        self.style_guide = self._load_style_guide(style_guide_path)
-
-    def _load_style_guide(self, path: str) -> Dict[str, Any]:
-        if not os.path.exists(path):
-            return {"persona": {"tone": "Standard"}, "negative_constraints": []}
-        with open(path, 'r') as f:
-            return yaml.safe_load(f)
+        self.persona = persona_provider.get_persona()
 
     def execute(self, state: AgentState) -> AgentState:
         beats = state.get('script_draft', [])
@@ -23,15 +16,15 @@ class LinguisticsAgent:
             return state
 
         style_context = f"""
-Persona Tone: {self.style_guide['persona']['tone']}
-Features: {", ".join(self.style_guide['persona']['features'])}
-Description: {self.style_guide['persona']['description']}
+Persona Tone: {self.persona.tone}
+Features: {", ".join(self.persona.dialect_features)}
+Description: {self.persona.description}
 
 Negative Constraints (NEVER USE THESE):
-{chr(10).join(f"- {c}" for c in self.style_guide['negative_constraints'])}
+{chr(10).join(f"- {c}" for c in self.persona.negative_constraints)}
 """
 
-        prompt = f"""You are the Linguistics Agent for 'Alfred Invierte'.
+        prompt = f"""You are the Linguistics Agent for '{self.persona.name}'.
 Your task is to transform the following Narrative Beats into a final video script.
 
 {style_context}
