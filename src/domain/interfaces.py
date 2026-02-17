@@ -1,10 +1,15 @@
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional
-from src.domain.entities import NarrativeBeat, ResearchData
+from src.domain.entities import NarrativeBeat, ResearchData, Persona
 
 class IDataSource(ABC):
     @abstractmethod
     def fetch_data(self, query: str) -> ResearchData:
+        pass
+
+class IPersonaProvider(ABC):
+    @abstractmethod
+    def get_persona(self) -> Persona:
         pass
 
 class ILLMProvider(ABC):
@@ -22,11 +27,6 @@ class IMarketingFramework(ABC):
     def framework_id(self) -> str:
         pass
 
-    @property
     @abstractmethod
-    def system_prompt_context(self) -> str:
-        pass
-
-    @abstractmethod
-    def structure_narrative(self, research_data: ResearchData, angle: Optional[str]) -> List[NarrativeBeat]:
+    def structure_narrative(self, research_data: ResearchData, persona: Persona, angle: Optional[str]) -> List[NarrativeBeat]:
         pass

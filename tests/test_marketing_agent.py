@@ -3,13 +3,23 @@ from unittest.mock import MagicMock
 from src.application.agents.marketing_agent import MarketingAgent
 from src.application.factories import MarketingFrameworkFactory
 from src.application.state import AgentState
-from src.domain.entities import ResearchData, NarrativeBeat
+from src.domain.entities import ResearchData, NarrativeBeat, Persona
 
 class TestMarketingAgent(unittest.TestCase):
     def setUp(self):
         self.mock_llm = MagicMock()
+        self.mock_persona_provider = MagicMock()
+        self.persona = Persona(
+            name="Alfred Invierte",
+            tone="Formal Rioplatense Spanish",
+            dialect_features=["voseo"],
+            description="Alfred description",
+            philosophy="Alfred philosophy"
+        )
+        self.mock_persona_provider.get_persona.return_value = self.persona
+        
         self.factory = MarketingFrameworkFactory(self.mock_llm)
-        self.agent = MarketingAgent(self.factory)
+        self.agent = MarketingAgent(self.factory, self.mock_persona_provider)
         
         self.research_data = ResearchData(
             topic="Inflation",

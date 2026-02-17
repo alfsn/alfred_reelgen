@@ -4,6 +4,7 @@ import requests
 import json
 import os
 from typing import List, Dict, Any, Optional
+from pydantic import TypeAdapter
 from src.domain.interfaces import IDataSource, ILLMProvider
 from src.domain.entities import ResearchData
 
@@ -90,11 +91,9 @@ class OpenRouterLLMAdapter(ILLMProvider):
         # For simplicity in MVP, we'll append schema instructions to the prompt and parse JSON.
         model = model or self.default_model
         
-        # Schema can be a Pydantic model class
-        if hasattr(schema, "model_json_schema"):
-            schema_json = json.dumps(schema.model_json_schema(), indent=2)
-        else:
-            schema_json = str(schema)
+        # Use TypeAdapter to handle both Pydantic models and List[Model]
+        adapter = TypeAdapter(schema)
+        schema_json = json.dumps(adapter.json_schema(), indent=2)
 
         structured_prompt = f"{prompt}\n\nReturn ONLY a JSON object matching this schema:\n{schema_json}"
         
@@ -106,4 +105,18 @@ class OpenRouterLLMAdapter(ILLMProvider):
         elif "```" in content:
              content = content.split("```")[1].split("```")[0].strip()
 
-        return schema.model_validate_json(content)
+        try:
+            return adapter.validate_json(content)
+        except Exception as e:
+            # Sometimes models wrap the list in a key if the schema is complex
+            # or if it misinterpreted "return a JSON object matching this schema"
+            try:
+                data = json.loads(content)
+                if isinstance(data, dict):
+                    # Look for the first value that is a list
+                    for val in data.values():
+                        if isinstance(val, list):
+                            return adapter.validate_python(val)
+                raise e
+            except:
+                raise e

@@ -2,29 +2,24 @@ import unittest
 from unittest.mock import MagicMock, patch
 from src.application.agents.linguistics_agent import LinguisticsAgent
 from src.application.state import AgentState
-from src.domain.entities import NarrativeBeat, ScriptScene
+from src.domain.entities import NarrativeBeat, ScriptScene, Persona
 
 class TestLinguisticsAgent(unittest.TestCase):
     def setUp(self):
         self.mock_llm = MagicMock()
-        # Mock style guide content to avoid file I/O dependency
-        self.style_guide_content = {
-            "persona": {
-                "tone": "Formal Rioplatense Spanish",
-                "features": ["voseo"],
-                "description": "Alfred Invierte"
-            },
-            "negative_constraints": ["No 'In conclusion'"]
-        }
+        self.mock_persona_provider = MagicMock()
+        self.persona = Persona(
+            name="Alfred Invierte",
+            tone="Formal Rioplatense Spanish",
+            dialect_features=["voseo"],
+            description="Alfred description",
+            philosophy="Alfred philosophy",
+            negative_constraints=["No 'In conclusion'"]
+        )
+        self.mock_persona_provider.get_persona.return_value = self.persona
 
-    @patch('yaml.safe_load')
-    @patch('builtins.open')
-    @patch('os.path.exists')
-    def test_linguistics_agent_execution(self, mock_exists, mock_open, mock_yaml):
-        mock_exists.return_value = True
-        mock_yaml.return_value = self.style_guide_content
-        
-        agent = LinguisticsAgent(self.mock_llm)
+    def test_linguistics_agent_execution(self):
+        agent = LinguisticsAgent(self.mock_llm, self.mock_persona_provider)
         
         beats = [
             NarrativeBeat(section_name="Hook", narrative_intent="Interest", content_focus="Inflation 10%")
