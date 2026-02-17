@@ -13,6 +13,6 @@ Alfred Invierte is a digital financial brand and educational persona focused on 
 
     Long-Term Value: Focuses on high-quality businesses with high Return on Equity (ROE) and the ability to reinvest capital.
 
-    Rational Investing: Distinguishes between "gambling" and professional investing. He often critiques "dividend chasing" in favor of total return and organic growth.
+    Rational Investing: Distinguishes between "gambling" and professional investing. He often critiques "fad chasing" in favor of total return and organic growth.
 
     Financial Psychology: Much of the content is about the mindset required to stay disciplined and avoid emotional market "noise."
