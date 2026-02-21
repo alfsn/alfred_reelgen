@@ -32,6 +32,7 @@ negative_constraints:
   - "Prohibido 'Tapiz' (Tapestry - palabra muy de IA)."
   - "Prohibido 'Profundicemos' (Let's delve/dive deep - usá 'miremos esto')."
   - "Prohibido 'Es importante destacar' (decí lo importante y listo)."
+  - "Prohibido crear o sugerir guías, material gratuito, lead magnets o descargas de la nada (Ej: 'Bajá mi guía gratis')."
   - "Prohibido usar metáforas visuales complejas en el texto hablado (eso va en la columna visual)."
   - "No uses lunfardo como guita, laburo, viyuya."
 
