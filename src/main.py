@@ -31,13 +31,16 @@ def main():
 
     # Dynamic filename if not provided
     if args.output is None:
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        now = datetime.now()
+        date_str = now.strftime("%Y%m%d")
+        time_str = now.strftime("%H%M%S")
         sanitized_topic = re.sub(r"[^a-zA-Z0-9]+", "_", args.topic.lower()).strip("_")
-        filename_parts = [sanitized_topic]
+        
+        filename_parts = [date_str, sanitized_topic]
         if args.angle:
             sanitized_angle = re.sub(r"[^a-zA-Z0-9]+", "_", args.angle.lower()).strip("_")
             filename_parts.append(sanitized_angle)
-        filename_parts.append(timestamp)
+        filename_parts.append(time_str)
         args.output = f"{'_'.join(filename_parts)}.json"
 
     # Initialize Adapters
