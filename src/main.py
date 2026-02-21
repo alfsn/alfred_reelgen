@@ -96,19 +96,22 @@ def main():
     final_state = app.invoke(initial_state)
 
     if final_state['errors']:
-        print("""Warnings/Errors encountered:""")
+        print("\nWarnings/Errors encountered:")
         for err in final_state['errors']:
             print(f"- {err}")
 
     # Save to file
-    output_dir = "reel_scripts"
-    os.makedirs(output_dir, exist_ok=True)
-    output_path = os.path.join(output_dir, args.output)
-    with open(output_path, "w", encoding="utf-8") as f:
-        json_output = [scene.model_dump() for scene in final_state['final_script']]
-        json.dump(json_output, f, indent=2, ensure_ascii=False)
-    
-    print(f"Script saved to {output_path}")
+    if final_state.get('final_script'):
+        output_dir = "reel_scripts"
+        os.makedirs(output_dir, exist_ok=True)
+        output_path = os.path.join(output_dir, args.output)
+        with open(output_path, "w", encoding="utf-8") as f:
+            json_output = [scene.model_dump() for scene in final_state['final_script']]
+            json.dump(json_output, f, indent=2, ensure_ascii=False)
+        
+        print(f"\nScript successfully saved to {output_path}")
+    else:
+        print("\nPipeline failed to generate a final script. No file was saved.")
 
 if __name__ == "__main__":
     main()

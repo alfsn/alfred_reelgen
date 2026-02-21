@@ -3,12 +3,17 @@ from tavily import TavilyClient
 import requests
 import json
 import os
+import time
+import logging
 from typing import List, Dict, Any, Optional
 from pydantic import TypeAdapter
 from src.domain.interfaces import IDataSource, ILLMProvider
 from src.domain.entities import ResearchData
 
+logger = logging.getLogger(__name__)
+
 class YFinanceAdapter(IDataSource):
+# ... (rest of YFinanceAdapter remains the same)
     def fetch_data(self, query: str) -> ResearchData:
         # Simplified implementation for MVP
         # In a real scenario, we'd extract the ticker from the query
@@ -70,6 +75,22 @@ class OpenRouterLLMAdapter(ILLMProvider):
         self.base_url = "https://openrouter.ai/api/v1"
         self.default_model = default_model
 
+    def _post_with_retry(self, url: str, headers: dict, data: dict, max_retries: int = 3) -> requests.Response:
+        last_exception = None
+        for attempt in range(max_retries):
+            try:
+                response = requests.post(url, headers=headers, data=json.dumps(data), timeout=30)
+                response.raise_for_status()
+                return response
+            except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.RequestException) as e:
+                last_exception = e
+                wait_time = (2 ** attempt) + (0.1 * attempt) # Exponential backoff: 1s, 2s, 4s...
+                logger.warning(f"Connection error to OpenRouter (attempt {attempt+1}/{max_retries}): {e}. Retrying in {wait_time:.1f}s...")
+                time.sleep(wait_time)
+        
+        logger.error(f"Failed to connect to OpenRouter after {max_retries} attempts.")
+        raise last_exception
+
     def generate(self, prompt: str, model: Optional[str] = None, temperature: float = 0.7) -> str:
         model = model or self.default_model
         headers = {
@@ -82,8 +103,8 @@ class OpenRouterLLMAdapter(ILLMProvider):
             "messages": [{"role": "user", "content": prompt}],
             "temperature": temperature
         }
-        response = requests.post(f"{self.base_url}/chat/completions", headers=headers, data=json.dumps(data))
-        response.raise_for_status()
+        
+        response = self._post_with_retry(f"{self.base_url}/chat/completions", headers, data)
         return response.json()['choices'][0]['message']['content']
 
     def generate_structured(self, prompt: str, schema: Any, model: Optional[str] = None, temperature: float = 0.7) -> Any:
