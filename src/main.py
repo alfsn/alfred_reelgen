@@ -22,9 +22,9 @@ def main():
     parser.add_argument("--framework", type=str, default="direct_response", 
                         choices=["direct_response", "storytelling", "metaphor"],
                         help="Marketing framework to use")
-    parser.add_argument("--datasource", type=str, default="tavily",
+    parser.add_argument("--datasource", type=str, default=None,
                         choices=["tavily", "yfinance"],
-                        help="Data source for research")
+                        help="Data source for research (optional)")
     parser.add_argument("--output", type=str, default=None, help="Path to save the final script")
 
     args = parser.parse_args()
@@ -45,9 +45,10 @@ def main():
 
     # Initialize Adapters
     try:
+        data_source = None
         if args.datasource == "yfinance":
             data_source = YFinanceAdapter()
-        else:
+        elif args.datasource == "tavily":
             data_source = TavilyAdapter()
             
         llm = OpenRouterLLMAdapter()
@@ -57,7 +58,12 @@ def main():
         return
 
     # Initialize Agents
-    research_agent = ResearchAgent(data_source, llm)
+    from src.application.agents.research_agent import ResearchAgent, MockResearchAgent
+    
+    if data_source:
+        research_agent = ResearchAgent(data_source, llm)
+    else:
+        research_agent = MockResearchAgent()
     
     persona_provider = ConfigPersonaProvider()
     

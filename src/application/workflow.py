@@ -1,12 +1,11 @@
 from langgraph.graph import StateGraph, END
 from src.application.state import AgentState
-from src.application.agents.research_agent import ResearchAgent
 from src.application.agents.marketing_agent import MarketingAgent
 from src.application.agents.linguistics_agent import LinguisticsAgent
 from typing import Dict, Any
 
 def create_workflow(
-    research_agent: ResearchAgent, 
+    research_agent: Any, 
     marketing_agent: MarketingAgent,
     linguistics_agent: LinguisticsAgent
 ):
