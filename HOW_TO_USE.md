@@ -47,7 +47,7 @@ poetry run python src/main.py --topic "Bitcoin Halving 2024"
 ### Example: Storytelling Framework
 
 ```bash
-poetry run python -m src.main --topic "The Compound Interest Effect" --angle "Start investing at 20 vs 40" --framework storytelling
+poetry run python -m src.main --topic "Casinofication or information? Kalshi and Polymarket" --angle "A new Suprising angle for information aggregation" --framework metaphor
 ```
 
 ## Generated Output
