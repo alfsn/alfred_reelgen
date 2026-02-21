@@ -17,8 +17,9 @@ def main():
     load_dotenv()
 
     parser = argparse.ArgumentParser(description="ReelSmith: Multi-agent content generation for financial reels.")
-    parser.add_argument("--topic", type=str, required=True, help="Topic for the reel (e.g., 'Bitcoin', 'Inflation')")
+    parser.add_argument("--topic", type=str, required=False, help="Topic for the reel (e.g., 'Bitcoin', 'Inflation')")
     parser.add_argument("--angle", type=str, default=None, help="Specific angle for the content")
+    parser.add_argument("--random", action="store_true", help="Select a random topic and angle from evergreen content")
     parser.add_argument("--framework", type=str, default="direct_response", 
                         choices=["direct_response", "storytelling", "metaphor"],
                         help="Marketing framework to use")
@@ -28,6 +29,26 @@ def main():
     parser.add_argument("--output", type=str, default=None, help="Path to save the final script")
 
     args = parser.parse_args()
+
+    # Random Mode
+    if args.random:
+        import yaml
+        import random
+        evergreen_path = "config/evergreen_content.yaml"
+        if os.path.exists(evergreen_path):
+            with open(evergreen_path, 'r') as f:
+                content = yaml.safe_load(f)
+                if not args.topic:
+                    args.topic = random.choice(content['topics'])
+                if not args.angle:
+                    args.angle = random.choice(content['angles'])
+                print(f"Random Mode: Topic='{args.topic}', Angle='{args.angle}'")
+        else:
+            print(f"Error: {evergreen_path} not found. Cannot use --random.")
+            return
+
+    if not args.topic:
+        parser.error("--topic is required if --random is not used.")
 
     # Dynamic filename if not provided
     if args.output is None:
