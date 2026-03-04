@@ -131,6 +131,17 @@ def main():
             json.dump(json_output, f, indent=2, ensure_ascii=False)
         
         print(f"\nScript successfully saved to {output_path}")
+
+        # Save text-only version
+        text_output_dir = "reel_text"
+        os.makedirs(text_output_dir, exist_ok=True)
+        text_filename = os.path.splitext(args.output)[0] + ".txt"
+        text_output_path = os.path.join(text_output_dir, text_filename)
+        with open(text_output_path, "w", encoding="utf-8") as f:
+            for scene in final_state['final_script']:
+                f.write(f"{scene.scene_number} - {scene.spoken_text}\n")
+        
+        print(f"Text-only version saved to {text_output_path}")
     else:
         print("\nPipeline failed to generate a final script. No file was saved.")
 
